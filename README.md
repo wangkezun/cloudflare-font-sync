@@ -1,23 +1,30 @@
 # Sarasa Fonts on Cloudflare
 
-自动检查 [Sarasa Gothic](https://github.com/be5invis/Sarasa-Gothic) 的最新稳定版，只下载当前 CSS 用到的 `Sarasa Fixed SC` 和 `Sarasa UI SC`，转换为 WOFF2 后发布到 Cloudflare R2。
+自动检查 [Sarasa Gothic](https://github.com/be5invis/Sarasa-Gothic) 和 [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) 的最新稳定版，只下载当前 CSS 用到的字体，转换为 WOFF2 后发布到 Cloudflare R2。
 
 对外 URL 保持不变，例如：
 
 ```text
 https://wkz.io/static/fonts/SarasaFixedSC-Regular.woff2
 https://wkz.io/static/fonts/SarasaUiSC-Regular.woff2
+https://wkz.io/static/fonts/SymbolsNerdFontMono-Regular.woff2
 ```
 
 ## 工作方式
 
-1. GitHub Actions 每天检查一次上游 Release，也可以手动执行。
-2. 若版本未变化，任务立即结束，不下载约 120 MB 的字体包。
-3. 新版本的 20 个字体文件先上传到 `static/fonts/releases/<tag>/`。
+1. GitHub Actions 每天分别检查两个上游 Release，也可以手动执行。
+2. 每个上游独立判断版本。只有 Nerd Fonts 更新时，不会重新下载约 120 MB 的 Sarasa 包。
+3. 新字体先上传到 `static/fonts/releases/<source>/<tag>/`。
 4. 所有文件成功后，最后更新 `static/fonts/manifest.json`，一次性切换版本。
-5. Worker 根据 manifest 将稳定 URL 映射到当前版本，并使用带版本号的边缘缓存键。
+5. Worker 根据 manifest 将稳定 URL 映射到当前文件，并使用文件摘要作为边缘缓存键。
 
-`SymbolsNerdFontMono-Regular.woff2` 不是 Sarasa 的一部分。Worker 会从 R2 的旧路径 `static/fonts/SymbolsNerdFontMono-Regular.woff2` 读取它，因此只需手动上传一次。
+当前同步范围是：
+
+- `Sarasa Fixed SC`：5 个字重，各有 normal/italic，共 10 个文件。
+- `Sarasa UI SC`：5 个字重，各有 normal/italic，共 10 个文件。
+- `Symbols Nerd Font Mono`：上游仅提供 Regular，共 1 个文件。
+
+Sarasa 当前上游完整字重为 `200 ExtraLight`、`300 Light`、`400 Regular`、`600 SemiBold`、`700 Bold`；并不存在被漏掉的 `100/500/800/900` 文件。
 
 ## 首次配置
 
@@ -43,18 +50,7 @@ Token 需要能编辑 Workers、Workers Routes 和目标 R2 bucket。建议创�
 
 ### 3. 首次同步字体
 
-先在 GitHub Actions 中手动运行 **Sync Sarasa fonts**，并将 `force` 设为 `true`。这一步先把字体写入 R2，避免 Worker 接管现有 URL 后出现空档。之后每天 UTC 02:17（北京时间 10:17）自动检查。
-
-如果当前 CSS 还使用 Nerd Font，请在部署 Worker 前上传一次：
-
-```bash
-npx wrangler r2 object put \
-  sarasa-fonts/static/fonts/SymbolsNerdFontMono-Regular.woff2 \
-  --file=/path/to/SymbolsNerdFontMono-Regular.woff2 \
-  --content-type=font/woff2 \
-  --cache-control="public, max-age=3600, s-maxage=31536000" \
-  --remote
-```
+先在 GitHub Actions 中手动运行 **Sync font releases**，并将 `force` 设为 `true`。这一步会同时把 Sarasa 和 Symbols Nerd Font Mono 写入 R2，避免 Worker 接管现有 URL 后出现空档。之后每天 UTC 02:17（北京时间 10:17）自动检查。
 
 ### 4. 部署 Worker
 
@@ -74,18 +70,18 @@ npm ci
 npm run check
 ```
 
-解析真实的最新 Release（会访问 GitHub API）：
+解析两个上游真实的最新 Release（会访问 GitHub API）：
 
 ```bash
 npm run resolve
 ```
 
-修改字体范围时，编辑 `fonts.config.json`。转换脚本会严格检查所有预期文件；上游改名或缺文件时会失败，不会切换线上 manifest。
+修改字体范围时，编辑 `fonts.config.json`。转换脚本会严格检查所有预期文件；任一上游改名或缺文件时会失败，不会切换线上 manifest。
 
 ## 回滚
 
-字体目录按 Release tag 保留。下载目标版本的 manifest，或把其中的 `tag` 改成已有版本后，重新上传为 `static/fonts/manifest.json` 即可原子回滚。不要在回滚前删除对应的 `releases/<tag>/` 目录。
+字体目录按来源和 Release tag 保留。将 manifest 中对应来源的 release 信息与文件项改回已有版本，再重新上传为 `static/fonts/manifest.json`，即可只回滚一个来源或同时回滚。不要提前删除对应的 `releases/<source>/<tag>/` 目录。
 
 ## License
 
-本仓库中的自动化代码可按 MIT License 使用。Sarasa Gothic 字体本身遵循其上游许可证；本仓库不提交或再授权字体二进制文件。
+本仓库中的自动化代码可按 MIT License 使用。Sarasa Gothic 与 Nerd Fonts 字体遵循各自的上游许可证；本仓库不提交或再授权字体二进制文件。

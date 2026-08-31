@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveRelease } from "../scripts/release-lib.mjs";
+import { resolveNerdFontsRelease, resolveSarasaRelease } from "../scripts/release-lib.mjs";
 
 const config = { families: ["SarasaFixedSC", "SarasaUiSC"] };
 
 test("resolves the two required family assets", () => {
-  const result = resolveRelease(
+  const result = resolveSarasaRelease(
     {
       tag_name: "v1.0.41",
       html_url: "https://github.com/be5invis/Sarasa-Gothic/releases/tag/v1.0.41",
@@ -38,7 +38,7 @@ test("resolves the two required family assets", () => {
 test("fails closed when an upstream asset was renamed", () => {
   assert.throws(
     () =>
-      resolveRelease(
+      resolveSarasaRelease(
         {
           tag_name: "v2.0.0",
           draft: false,
@@ -49,4 +49,26 @@ test("fails closed when an upstream asset was renamed", () => {
       ),
     /Required release asset is missing/,
   );
+});
+
+test("resolves the Symbols Only Nerd Fonts asset", () => {
+  const result = resolveNerdFontsRelease(
+    {
+      tag_name: "v3.5.1",
+      html_url: "https://github.com/ryanoasis/nerd-fonts/releases/tag/v3.5.1",
+      draft: false,
+      prerelease: false,
+      assets: [
+        {
+          name: "NerdFontsSymbolsOnly.tar.xz",
+          size: 2_362_384,
+          browser_download_url: "https://example.test/NerdFontsSymbolsOnly.tar.xz",
+        },
+      ],
+    },
+    { asset: "NerdFontsSymbolsOnly.tar.xz" },
+  );
+
+  assert.equal(result.tag, "v3.5.1");
+  assert.equal(result.asset.name, "NerdFontsSymbolsOnly.tar.xz");
 });

@@ -2,11 +2,14 @@ interface FontFile {
   name: string;
   sha256: string;
   size: number;
+  source?: "sarasa" | "nerdFonts";
+  key?: string;
 }
 
 interface FontManifest {
-  tag: string;
-  version: string;
+  schemaVersion?: number;
+  tag?: string;
+  version?: string;
   files: FontFile[];
   updatedAt: string;
 }
@@ -70,15 +73,15 @@ async function serveFont(
   filename: string,
 ): Promise<Response> {
   const manifest = await readManifest(env);
-  const managed = manifest?.files.some((file) => file.name === filename) ?? false;
-  const objectKey = managed
-    ? `${env.FONT_PREFIX}/releases/${manifest!.tag}/${filename}`
+  const managedFile = manifest?.files.find((file) => file.name === filename);
+  const objectKey = managedFile
+    ? `${env.FONT_PREFIX}/${managedFile.key ?? `releases/${manifest!.tag}/${filename}`}`
     : `${env.FONT_PREFIX}/${filename}`;
 
-  // The version is deliberately part of the edge cache key. The public URL stays
-  // stable, while a manifest switch immediately selects a fresh cached object.
+  // The file digest is deliberately part of the edge cache key. Each upstream can
+  // update independently while the public URL remains stable.
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set("sarasa-version", managed ? manifest!.tag : "legacy");
+  cacheUrl.searchParams.set("font-version", managedFile?.sha256 ?? manifest?.tag ?? "legacy");
   const cacheKey = new Request(cacheUrl.toString(), request);
   const cache = caches.default;
 

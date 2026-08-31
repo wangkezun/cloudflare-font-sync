@@ -11,8 +11,8 @@ from fontTools.ttLib import TTFont
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "fonts.config.json"
 RELEASE_PATH = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "build/release.json")
-INPUT_DIR = Path(sys.argv[2] if len(sys.argv) > 2 else ROOT / "build/ttf")
-OUTPUT_DIR = Path(sys.argv[3] if len(sys.argv) > 3 else ROOT / "build/woff2/sarasa")
+INPUT_DIR = Path(sys.argv[2] if len(sys.argv) > 2 else ROOT / "build/nerd-fonts")
+OUTPUT_DIR = Path(sys.argv[3] if len(sys.argv) > 3 else ROOT / "build/woff2/nerd-fonts")
 
 
 def sha256(path: Path) -> str:
@@ -26,42 +26,34 @@ def sha256(path: Path) -> str:
 def main() -> None:
     config = json.loads(CONFIG_PATH.read_text())
     release = json.loads(RELEASE_PATH.read_text())
-    sarasa_config = config["sarasa"]
-    expected = [
-        f"{family}-{style}.ttf"
-        for family in sarasa_config["families"]
-        for style in sarasa_config["styles"]
-    ]
-
-    found = {}
-    for path in INPUT_DIR.rglob("*.ttf"):
-        if path.name in expected:
-            if path.name in found:
-                raise RuntimeError(f"Duplicate input font: {path.name}")
-            found[path.name] = path
-
-    missing = sorted(set(expected) - set(found))
-    if missing:
-        raise RuntimeError(f"Missing expected TTF files: {', '.join(missing)}")
-
+    source_release = release["sources"]["nerdFonts"]
+    expected = config["nerdFonts"]["files"]
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     files = []
+
     for ttf_name in expected:
+        matches = list(INPUT_DIR.rglob(ttf_name))
+        if len(matches) != 1:
+            raise RuntimeError(f"Expected exactly one {ttf_name}, found {len(matches)}")
+
         output = OUTPUT_DIR / f"{Path(ttf_name).stem}.woff2"
-        font = TTFont(found[ttf_name], recalcTimestamp=False)
+        font = TTFont(matches[0], recalcTimestamp=False)
         font.flavor = "woff2"
         font.save(output, reorderTables=False)
         font.close()
-        files.append({"name": output.name, "sha256": sha256(output), "size": output.stat().st_size})
+        files.append(
+            {
+                "name": output.name,
+                "source": "nerdFonts",
+                "key": f"releases/nerd-fonts/{source_release['tag']}/{output.name}",
+                "sha256": sha256(output),
+                "size": output.stat().st_size,
+            }
+        )
         print(f"Converted {ttf_name} -> {output.name}")
 
-    source_release = release["sources"]["sarasa"]
-    for file in files:
-        file["source"] = "sarasa"
-        file["key"] = f"releases/sarasa/{source_release['tag']}/{file['name']}"
-
-    manifest = {
-        "source": "sarasa",
+    partial = {
+        "source": "nerdFonts",
         "release": {
             "tag": source_release["tag"],
             "version": source_release["version"],
@@ -70,7 +62,7 @@ def main() -> None:
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "files": files,
     }
-    (OUTPUT_DIR / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (OUTPUT_DIR / "manifest.json").write_text(json.dumps(partial, indent=2) + "\n")
 
 
 if __name__ == "__main__":
