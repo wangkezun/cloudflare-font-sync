@@ -1,4 +1,4 @@
-# Sarasa Fonts on Cloudflare
+# Cloudflare Font Sync
 
 自动检查 [Sarasa Gothic](https://github.com/be5invis/Sarasa-Gothic) 和 [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) 的最新稳定版，只下载当前 CSS 用到的字体，转换为 WOFF2 后发布到 Cloudflare R2。
 

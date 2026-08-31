@@ -6,7 +6,7 @@ const outputPath = resolve(process.argv[2] ?? "build/release.json");
 const config = JSON.parse(await readFile(new URL("../fonts.config.json", import.meta.url), "utf8"));
 const headers = {
   accept: "application/vnd.github+json",
-  "user-agent": "sarasa-fonts-cf",
+  "user-agent": "cloudflare-font-sync",
   "x-github-api-version": "2022-11-28",
 };
 if (process.env.SARASA_GITHUB_TOKEN) {
