@@ -44,6 +44,15 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Ensure R2 bucket exists
+        run: |
+          if npx wrangler r2 bucket info "$R2_BUCKET" --json >/dev/null 2>&1; then
+            echo "R2 bucket '$R2_BUCKET' already exists."
+          else
+            echo "Creating R2 bucket '$R2_BUCKET'..."
+            npx wrangler r2 bucket create "$R2_BUCKET"
+          fi
+
       - name: Resolve latest stable release
         env:
           SARASA_GITHUB_TOKEN: ${{ github.token }}
