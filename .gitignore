@@ -1,0 +1,9 @@
+node_modules/
+build/
+.wrangler/
+.dev.vars*
+*.7z
+*.ttf
+*.woff2
+__pycache__/
+*.pyc

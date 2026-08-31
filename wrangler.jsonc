@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "sarasa-fonts",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-31",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "wkz.io/static/fonts/*",
+      "zone_name": "wkz.io"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FONTS",
+      "bucket_name": "sarasa-fonts"
+    }
+  ],
+  "vars": {
+    "FONT_PREFIX": "static/fonts"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

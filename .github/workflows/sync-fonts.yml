@@ -1,0 +1,119 @@
+name: Sync Sarasa fonts
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Rebuild and upload even when the version is unchanged
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-sarasa-fonts
+  cancel-in-progress: false
+
+env:
+  R2_BUCKET: sarasa-fonts
+  R2_PREFIX: static/fonts
+  PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://wkz.io' }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          sudo apt-get update
+          sudo apt-get install --yes p7zip-full
+          python -m pip install 'fonttools[woff]==4.63.0'
+
+      - name: Resolve latest stable release
+        env:
+          SARASA_GITHUB_TOKEN: ${{ github.token }}
+        run: npm run resolve
+
+      - name: Decide whether to update
+        id: version
+        env:
+          FORCE: ${{ inputs.force || 'false' }}
+        run: |
+          latest_tag="$(jq -r .tag build/release.json)"
+          remote_tag="$(curl --fail --silent --show-error --max-time 20 \
+            "${PUBLIC_BASE_URL%/}/static/fonts/manifest.json" 2>/dev/null \
+            | jq -r '.tag // empty' 2>/dev/null || true)"
+          if [[ "$FORCE" == "true" || "$latest_tag" != "$remote_tag" ]]; then
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "latest_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+          echo "remote_tag=$remote_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        if: steps.version.outputs.update == 'true'
+        run: |
+          mkdir -p build/archives build/ttf
+          jq -r '.assets[] | [.url, .name] | @tsv' build/release.json | \
+            while IFS=$'\t' read -r url name; do
+              curl --fail --location --retry 5 --retry-all-errors \
+                --output "build/archives/$name" "$url"
+              7z x -y "build/archives/$name" -obuild/ttf
+            done
+
+      - name: Convert selected TTF files to WOFF2
+        if: steps.version.outputs.update == 'true'
+        run: python scripts/convert_fonts.py
+
+      - name: Upload versioned fonts to R2
+        if: steps.version.outputs.update == 'true'
+        run: |
+          tag="$(jq -r .tag build/woff2/manifest.json)"
+          find build/woff2 -maxdepth 1 -type f -name '*.woff2' -print0 | \
+            while IFS= read -r -d '' file; do
+              name="$(basename "$file")"
+              npx wrangler r2 object put \
+                "$R2_BUCKET/$R2_PREFIX/releases/$tag/$name" \
+                --file="$file" \
+                --content-type="font/woff2" \
+                --cache-control="public, max-age=3600, s-maxage=31536000, stale-while-revalidate=86400" \
+                --remote
+            done
+
+      - name: Activate release atomically
+        if: steps.version.outputs.update == 'true'
+        run: |
+          npx wrangler r2 object put \
+            "$R2_BUCKET/$R2_PREFIX/manifest.json" \
+            --file=build/woff2/manifest.json \
+            --content-type="application/json; charset=utf-8" \
+            --cache-control="no-cache" \
+            --remote
+
+      - name: Write job summary
+        run: |
+          if [[ "${{ steps.version.outputs.update }}" == "true" ]]; then
+            echo "Sarasa ${{ steps.version.outputs.latest_tag }} uploaded and activated." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Already current at ${{ steps.version.outputs.remote_tag }}; nothing uploaded." >> "$GITHUB_STEP_SUMMARY"
+          fi
