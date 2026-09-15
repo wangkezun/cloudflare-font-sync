@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import hashlib
 import json
+import os
+from concurrent.futures import ProcessPoolExecutor
+from itertools import repeat
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +24,15 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def convert_font(input_path: Path, output_dir: Path) -> dict:
+    output = output_dir / f"{input_path.stem}.woff2"
+    with TTFont(input_path, recalcTimestamp=False) as font:
+        font.flavor = "woff2"
+        font.save(output, reorderTables=False)
+    print(f"Converted {input_path.name} -> {output.name}", flush=True)
+    return {"name": output.name, "sha256": sha256(output), "size": output.stat().st_size}
 
 
 def main() -> None:
@@ -45,15 +57,10 @@ def main() -> None:
         raise RuntimeError(f"Missing expected TTF files: {', '.join(missing)}")
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    files = []
-    for ttf_name in expected:
-        output = OUTPUT_DIR / f"{Path(ttf_name).stem}.woff2"
-        font = TTFont(found[ttf_name], recalcTimestamp=False)
-        font.flavor = "woff2"
-        font.save(output, reorderTables=False)
-        font.close()
-        files.append({"name": output.name, "sha256": sha256(output), "size": output.stat().st_size})
-        print(f"Converted {ttf_name} -> {output.name}")
+    workers = max(1, min(4, os.cpu_count() or 1))
+    print(f"Converting {len(expected)} fonts with {workers} workers", flush=True)
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        files = list(pool.map(convert_font, [found[name] for name in expected], repeat(OUTPUT_DIR)))
 
     source_release = release["sources"]["sarasa"]
     for file in files:

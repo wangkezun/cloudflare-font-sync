@@ -89,6 +89,6 @@ npm run resolve
 
 稳定文件名示例：`SarasaUiTC-Regular.woff2`、`SarasaFixedHC-Bold.woff2`、`SarasaUiJ-Italic.woff2`、`SarasaFixedK-Regular.woff2`。UI 文件名使用 `Ui`，地区代码区分大小写。
 
-同步任务同时检查版本号和预期文件是否齐全，因此新增地区或样式后，即使上游版本未变化也会补齐；仅缺 Sarasa 文件时不重建 Nerd Fonts。100 个 Sarasa 文件需要更长转换和上传时间，任务上限调整为 120 分钟。全部上传完成后才切换 manifest。
+同步任务同时检查版本号和预期文件是否齐全，因此新增地区或样式后，即使上游版本未变化也会补齐；仅缺 Sarasa 文件时不重建 Nerd Fonts。100 个 Sarasa 文件需要更长转换和上传时间，转换使用最多 4 个进程，任务上限调整为 180 分钟。全部上传完成后才切换 manifest。
 
 客户端声明多个 font-face 不代表全部预下载；应按页面语言、字重和样式使用。完整字库尚未分包，首次加载仍可能较大。
