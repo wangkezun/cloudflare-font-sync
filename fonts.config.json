@@ -1,7 +1,18 @@
 {
   "sarasa": {
     "upstream": "be5invis/Sarasa-Gothic",
-    "families": ["SarasaFixedSC", "SarasaUiSC"],
+    "families": [
+      "SarasaFixedSC",
+      "SarasaUiSC",
+      "SarasaFixedTC",
+      "SarasaUiTC",
+      "SarasaFixedHC",
+      "SarasaUiHC",
+      "SarasaFixedJ",
+      "SarasaUiJ",
+      "SarasaFixedK",
+      "SarasaUiK"
+    ],
     "styles": [
       "ExtraLight",
       "ExtraLightItalic",
@@ -18,6 +29,8 @@
   "nerdFonts": {
     "upstream": "ryanoasis/nerd-fonts",
     "asset": "NerdFontsSymbolsOnly.tar.xz",
-    "files": ["SymbolsNerdFontMono-Regular.ttf"]
+    "files": [
+      "SymbolsNerdFontMono-Regular.ttf"
+    ]
   }
 }

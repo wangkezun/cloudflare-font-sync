@@ -28,7 +28,7 @@ env:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -72,21 +72,7 @@ jobs:
         env:
           FORCE: ${{ inputs.force || 'false' }}
         run: |
-          latest_sarasa="$(jq -r .sources.sarasa.tag build/release.json)"
-          latest_nerd="$(jq -r .sources.nerdFonts.tag build/release.json)"
-          remote_sarasa="$(jq -r '.sources.sarasa.tag // .tag // empty' build/remote-manifest.json)"
-          remote_nerd="$(jq -r '.sources.nerdFonts.tag // empty' build/remote-manifest.json)"
-
-          sarasa_update=false
-          nerd_update=false
-          [[ "$FORCE" == "true" || "$latest_sarasa" != "$remote_sarasa" ]] && sarasa_update=true
-          [[ "$FORCE" == "true" || "$latest_nerd" != "$remote_nerd" ]] && nerd_update=true
-
-          echo "sarasa_update=$sarasa_update" >> "$GITHUB_OUTPUT"
-          echo "nerd_update=$nerd_update" >> "$GITHUB_OUTPUT"
-          echo "any_update=$([[ "$sarasa_update" == true || "$nerd_update" == true ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "latest_sarasa=$latest_sarasa" >> "$GITHUB_OUTPUT"
-          echo "latest_nerd=$latest_nerd" >> "$GITHUB_OUTPUT"
+          node scripts/plan-sync.mjs >> "$GITHUB_OUTPUT"
 
       - name: Install font conversion dependencies
         if: steps.version.outputs.any_update == 'true'

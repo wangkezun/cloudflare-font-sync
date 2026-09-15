@@ -1,6 +1,6 @@
 # Cloudflare Font Sync
 
-自动检查 [Sarasa Gothic](https://github.com/be5invis/Sarasa-Gothic) 和 [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) 的最新稳定版，只下载当前 CSS 用到的字体，转换为 WOFF2 后发布到 Cloudflare R2。
+自动检查 [Sarasa Gothic](https://github.com/be5invis/Sarasa-Gothic) 和 [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) 的最新稳定版，只下载配置中需要的 UI / Fixed 地区字体及符号字体，转换为 WOFF2 后发布到 Cloudflare R2。
 
 对外 URL 保持不变，例如：
 
@@ -20,8 +20,7 @@ https://wkz.io/static/fonts/SymbolsNerdFontMono-Regular.woff2
 
 当前同步范围是：
 
-- `Sarasa Fixed SC`：5 个字重，各有 normal/italic，共 10 个文件。
-- `Sarasa UI SC`：5 个字重，各有 normal/italic，共 10 个文件。
+- `Sarasa Fixed` 和 `Sarasa UI`：SC、TC、HC、J、K 五个地区，每个家族每个地区 5 个字重，各有 normal/italic，共 100 个文件。
 - `Symbols Nerd Font Mono`：上游仅提供 Regular，共 1 个文件。
 
 Sarasa 当前上游完整字重为 `200 ExtraLight`、`300 Light`、`400 Regular`、`600 SemiBold`、`700 Bold`；并不存在被漏掉的 `100/500/800/900` 文件。
@@ -85,3 +84,11 @@ npm run resolve
 ## License
 
 本仓库中的自动化代码可按 MIT License 使用。Sarasa Gothic 与 Nerd Fonts 字体遵循各自的上游许可证；本仓库不提交或再授权字体二进制文件。
+
+## 地区字体扩展
+
+稳定文件名示例：`SarasaUiTC-Regular.woff2`、`SarasaFixedHC-Bold.woff2`、`SarasaUiJ-Italic.woff2`、`SarasaFixedK-Regular.woff2`。UI 文件名使用 `Ui`，地区代码区分大小写。
+
+同步任务同时检查版本号和预期文件是否齐全，因此新增地区或样式后，即使上游版本未变化也会补齐；仅缺 Sarasa 文件时不重建 Nerd Fonts。100 个 Sarasa 文件需要更长转换和上传时间，任务上限调整为 120 分钟。全部上传完成后才切换 manifest。
+
+客户端声明多个 font-face 不代表全部预下载；应按页面语言、字重和样式使用。完整字库尚未分包，首次加载仍可能较大。
