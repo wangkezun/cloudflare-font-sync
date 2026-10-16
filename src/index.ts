@@ -16,7 +16,7 @@ interface FontManifest {
 
 const MANIFEST_NAME = "manifest.json";
 const FONT_CACHE_CONTROL =
-  "public, max-age=3600, s-maxage=31536000, stale-while-revalidate=86400";
+  "public, max-age=3600, s-maxage=31536000";
 
 function responseHeaders(object: R2Object): Headers {
   const headers = new Headers();
@@ -87,19 +87,23 @@ async function serveFont(
 
   if (request.method === "GET") {
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      // Apply the current policy even to entries stored before this deployment.
+      const response = new Response(cached.body, cached);
+      response.headers.set("cache-control", FONT_CACHE_CONTROL);
+      return response;
+    }
   }
 
   const object = await env.FONTS.get(objectKey);
   if (!object) return new Response("Font not found", { status: 404 });
 
-  if (request.headers.get("if-none-match") === object.httpEtag) {
-    return new Response(null, { status: 304, headers: { etag: object.httpEtag } });
-  }
-
   const headers = responseHeaders(object);
   headers.set("content-type", "font/woff2");
   headers.set("cache-control", FONT_CACHE_CONTROL);
+  if (request.headers.get("if-none-match") === object.httpEtag) {
+    return new Response(null, { status: 304, headers });
+  }
   const response = new Response(request.method === "HEAD" ? null : object.body, { headers });
 
   if (request.method === "GET") context.waitUntil(cache.put(cacheKey, response.clone()));

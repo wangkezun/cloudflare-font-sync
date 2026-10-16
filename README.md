@@ -18,6 +18,8 @@ https://wkz.io/static/fonts/SymbolsNerdFontMono-Regular.woff2
 4. 所有文件成功后，最后更新 `static/fonts/manifest.json`，一次性切换版本。
 5. Worker 根据 manifest 将稳定 URL 映射到当前文件，并使用文件摘要作为边缘缓存键。
 
+字体响应使用 `Cache-Control: public, max-age=3600, s-maxage=31536000`：浏览器缓存 1 小时，边缘缓存有效期 1 年；内容更新后使用新的摘要缓存键。manifest 使用 `no-cache`。Cloudflare 浏览器缓存 TTL 应遵循源站响应头，避免为字体路径额外强制覆盖 TTL，也不要强制缓存 manifest。Worker 会为已有缓存命中和 304 响应统一返回当前缓存策略，无需重新转换或上传现有字体。浏览器已经保存的旧响应头需等下次网络请求才能更新。
+
 当前同步范围是：
 
 - `Sarasa Fixed` 和 `Sarasa UI`：SC、TC、HC、J、K 五个地区，每个家族每个地区 5 个字重，各有 normal/italic，共 100 个文件。
