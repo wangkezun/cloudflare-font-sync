@@ -21,7 +21,6 @@ concurrency:
 env:
   R2_BUCKET: sarasa-fonts
   R2_PREFIX: static/fonts
-  PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || 'https://wkz.io' }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
@@ -59,13 +58,7 @@ jobs:
         run: npm run resolve
 
       - name: Fetch deployed manifest
-        run: |
-          if ! curl --fail --silent --show-error --max-time 20 \
-            --output build/remote-manifest.json \
-            "${PUBLIC_BASE_URL%/}/static/fonts/manifest.json"; then
-            printf '{}\n' > build/remote-manifest.json
-          fi
-          jq -e 'type == "object"' build/remote-manifest.json >/dev/null
+        run: node scripts/fetch-manifest.mjs
 
       - name: Decide which sources need an update
         id: version

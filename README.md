@@ -43,9 +43,7 @@ Sarasa 当前上游完整字重为 `200 ExtraLight`、`300 Light`、`400 Regular
 
 Token 需要能编辑 Workers、Workers Routes 和目标 R2 bucket。建议创建只覆盖该账户与 `wkz.io` zone 的最小权限 token。
 
-可选的 Actions variable：
-
-- `PUBLIC_BASE_URL`：默认 `https://wkz.io`，用于检查线上 manifest。
+同步任务使用上述 Cloudflare 凭据直接读取 R2 中的 manifest，不依赖公开域名或 `PUBLIC_BASE_URL`。仅当 R2 返回 404（清单不存在）时按首次同步处理；权限错误、网络错误或清单格式异常会终止任务，避免误触发全量转换。
 
 ### 3. 首次同步字体
 
